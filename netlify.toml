@@ -1,0 +1,6 @@
+[build]
+  functions = "functions"  # 関数フォルダの場所
+  publish   = "public"     # 公開する静的ファイルの場所
+
+[dev]
+  functions = "functions"  # ローカル開発時にも関数を動かす

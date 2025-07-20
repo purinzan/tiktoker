@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>管理者ダッシュボード - 合法動画ギャラリー</title>
+  <style>
+    /* リセット */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* 全体レイアウト */
+    body {
+      font-family: sans-serif;
+      background: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    h1, h2 {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .content {
+      flex: 1;
+      max-width: 1000px;
+      margin: auto;
+      padding: 1rem;
+    }
+    /* パスワード入力オーバーレイ */
+    #passwordOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    }
+    #passwordOverlay h2 {
+      color: #fff;
+      margin-bottom: 1rem;
+    }
+    #passwordOverlay input {
+      padding: .6rem .8rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      margin-bottom: .7rem;
+      width: 220px;
+      text-align: center;
+    }
+    #passwordOverlay button {
+      padding: .6rem 1.2rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      background: #0bf;
+      color: #111;
+      cursor: pointer;
+    }
+
+    /* 各セクションのスタイル */
+    .section {
+      margin-bottom: 2rem;
+    }
+    .section h2 {
+      font-size: 1.2rem;
+      margin-bottom: .5rem;
+      border-bottom: 1px solid #444;
+      padding-bottom: .5rem;
+    }
+
+    /* 動画プレビューグリッド */
+    .video-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 1rem;
+    }
+    .video-card {
+      background: #222;
+      border-radius: 6px;
+      overflow: hidden;
+      text-align: center;
+      padding-bottom: .5rem;
+      cursor: pointer;
+      transition: transform .2s;
+    }
+    .video-card:hover {
+      transform: scale(1.02);
+    }
+    .video-card img {
+      width: 100%;
+      aspect-ratio: 16/10;
+      object-fit: cover;
+      display: block;
+    }
+    .video-card h3 {
+      font-size: .85rem;
+      margin: .5rem 0 0.2rem;
+      padding: 0 0.3rem;
+      color: #ddd;
+    }
+
+    /* タグカウント表 */
+    .tag-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+    .tag-table th,
+    .tag-table td {
+      border: 1px solid #444;
+      padding: 0.5rem .8rem;
+      text-align: left;
+    }
+    .tag-table th {
+      background: #222;
+      color: #0bf;
+    }
+    .tag-table td {
+      background: #1b1b1b;
+    }
+
+    /* JSON生データ表示 */
+    pre {
+      background: #1e1e1e;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 400px;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    /* モーダル（動画プレビュー再生用）*/
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .modal iframe {
+      width: 90%;
+      height: 90vh;
+      max-width: 960px;
+      border: none;
+    }
+
+    /* レスポンシブ */
+    @media (max-width: 768px) {
+      h1 { font-size: 1.3rem; }
+      .video-card h3 { font-size: .75rem; }
+    }
+  </style>
+</head>
+<body>
+  <!-- パスワード入力オーバーレイ（初期は表示） -->
+  <div id="passwordOverlay">
+    <h2>管理者ログイン</h2>
+    <input type="password" id="passwordInput" placeholder="パスワードを入力" />
+    <button id="loginBtn" type="button">ログイン</button>
+  </div>
+
+  <!-- ダッシュボード本体 -->
+  <div class="content" id="dashboard" style="display:none;">
+    <h1>管理者ダッシュボード</h1>
+
+    <!-- 1. 全動画数表示 -->
+    <div class="section">
+      <h2>① 全動画数</h2>
+      <p id="totalCount">読み込み中…</p>
+    </div>
+
+    <!-- 2. 動画プレビュー一覧 -->
+    <div class="section">
+      <h2>② 動画リスト（プレビュー）</h2>
+      <div class="video-preview-grid" id="videoPreviewGrid">
+        <!-- JavaScript で埋め込み -->
+      </div>
+    </div>
+
+    <!-- 3. タグごとの動画数 -->
+    <div class="section">
+      <h2>③ タグごとの動画数</h2>
+      <table class="tag-table" id="tagCountTable">
+        <thead>
+          <tr>
+            <th>タグ名</th>
+            <th>動画本数</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- JavaScript で埋め込み -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 4. JSON 生データ表示 -->
+    <div class="section">
+      <h2>④ videos.json（生データ）</h2>
+      <button id="copyBtn" type="button">JSON を全コピー</button>
+      <pre id="rawJson">読み込み中…</pre>
+      <!-- ダウンロードリンク（オプション） -->
+      <p><a href="videos.json" download="videos.json" style="color:#0bf;">● JSONファイルをダウンロード</a></p>
+    </div>
+  </div>
+
+
+  <!-- 動画再生モーダル -->
+  <div class="modal" id="modal" onclick="closeModal()">
+    <iframe id="modalVideo" src="" allowfullscreen></iframe>
+  </div>
+
+<script>
+  /***** 管理者認証設定 *****/
+  const ADMIN_PASSWORD = 'admin123'; // ← 必要に応じて変更
+  let isAdmin = false;
+
+  // オーバーレイを表示
+  function showLoginOverlay() {
+    document.getElementById('passwordOverlay').style.display = 'flex';
+  }
+  // オーバーレイを非表示
+  function hideLoginOverlay() {
+    document.getElementById('passwordOverlay').style.display = 'none';
+  }
+  // パスワードチェックして成功ならダッシュボードを表示
+  function checkPassword() {
+    const val = document.getElementById('passwordInput').value.trim();
+    if (val === ADMIN_PASSWORD) {
+      isAdmin = true;
+      hideLoginOverlay();
+      document.getElementById('dashboard').style.display = 'block';
+      initializeDashboard();
+    } else {
+      alert('パスワードが違います');
+    }
+  }
+
+  document.getElementById('loginBtn').onclick = checkPassword;
+  document.getElementById('passwordInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      checkPassword();
+    }
+  });
+
+  /***** ダッシュボード初期化関数 *****/
+  async function initializeDashboard() {
+    try {
+      // 1. videos.json をフェッチ
+      const res = await fetch('/videos.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+
+      // 2. 動画総数を表示
+      document.getElementById('totalCount').textContent = json.length + ' 本';
+
+      // 3. 動画プレビューグリッドを生成
+      const previewGrid = document.getElementById('videoPreviewGrid');
+      previewGrid.innerHTML = json.map(v => `
+        <div class="video-card" onclick="openModal('${v.video ? v.video : `https://www.xvideos.com/embedframe/${v.id}`}')">
+          <img src="${v.thumb}" alt="${v.title}">
+          <h3>${v.title}</h3>
+        </div>
+      `).join('');
+
+      // 4. タグごとの動画数を集計してテーブルに表示
+      const tagCount = {};
+      json.forEach(v => {
+        if (Array.isArray(v.tags)) {
+          v.tags.forEach(tag => {
+            if (!tagCount[tag]) tagCount[tag] = 0;
+            tagCount[tag]++;
+          });
+        }
+      });
+      const tbody = document.querySelector('#tagCountTable tbody');
+      tbody.innerHTML = Object.entries(tagCount)
+        .sort((a, b) => b[1] - a[1])  // 出現頻度の高い順にソート
+        .map(([tag, count]) =>
+          `<tr><td>${tag}</td><td>${count} 本</td></tr>`
+        ).join('');
+
+      // 5. JSON 生データを <pre> に表示
+      const rawJsonElem = document.getElementById('rawJson');
+      rawJsonElem.textContent = JSON.stringify(json, null, 2);
+
+      // 6. キャンセル時に iframe の src をクリア
+      window.openModal = url => {
+        document.getElementById('modalVideo').src = url;
+        document.getElementById('modal').style.display = 'flex';
+      };
+      window.closeModal = () => {
+        document.getElementById('modalVideo').src = '';
+        document.getElementById('modal').style.display = 'none';
+      };
+
+      // 7. JSON 全コピー用のボタン
+      document.getElementById('copyBtn').onclick = () => {
+        navigator.clipboard.writeText(rawJsonElem.textContent)
+          .then(() => alert('JSON をクリップボードにコピーしました'))
+          .catch(err => alert('コピーに失敗しました: ' + err));
+      };
+
+    } catch (err) {
+      console.error(err);
+      alert('JSON の読み込みに失敗しました: ' + err.message);
+    }
+  }
+</script>
+</body>
+</html>

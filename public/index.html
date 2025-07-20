@@ -1,0 +1,273 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title> tiktoker master</title>
+  <style>
+    /* リセット */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* 全体レイアウト */
+    body { font-family: sans-serif; background: #111; color: #fff; display: flex; flex-direction: column; min-height: 100vh; }
+    header { background: #222; padding: 1rem; }
+    .header-top { text-align: center; margin-bottom: 0.5rem; }
+    .header-top h1 { font-size: 1.5rem; }
+    .header-bottom { display: flex; align-items: center; position: relative; }
+    /* ナビリンクを中央配置 */
+    .header-bottom nav { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 1rem; }
+    .header-bottom nav a { color: #0bf; text-decoration: none; }
+    /* 管理者ボタンを右寄せ */
+    .header-bottom .login-container { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
+    #loginToggle { padding: .4rem .8rem; border: none; border-radius: 4px; background: #0bf; color: #111; cursor: pointer; font-size: .9rem; }
+    #adminBadge { display: none; color: orange; font-weight: bold; }
+
+    .main-content { display: flex; flex: 1; }
+    .sidebar { width: 200px; background: #1c1c1c; padding: 1rem; overflow-y: auto; }
+    .sidebar h3 { margin-bottom: .5rem; }
+    .sidebar .tag { display: block; padding: .25rem .5rem; margin: .25rem 0; background: #333; border-radius: 4px; color: #fff; cursor: pointer; }
+    .sidebar .tag.active { background: #0bf; color: #111; }
+
+    .container { flex: 1; max-width: 1000px; margin: auto; padding: 1rem; }
+    .search-bar { margin-bottom: 1rem; text-align: center; }
+    .search-bar form { display: inline-block; width: 100%; max-width: 800px; }
+    .search-bar input { padding: .5rem; font-size: 1rem; width: 80%; border: none; border-radius: 4px 0 0 4px; }
+    .search-bar button { padding: .5rem 1rem; font-size: 1rem; border: none; border-radius: 0 4px 4px 0; background: #0bf; color: #111; cursor: pointer; }
+
+    .selected-tags { margin: .5rem 0 1rem; }
+    .selected-tags span { display: inline-block; background: #0bf; color: #111; padding: 2px 8px; margin: 0 5px 5px 0; border-radius: 4px; font-size: .8rem; cursor: pointer; }
+
+    .video-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+    .video-card { background: #1e1e1e; border-radius: 8px; overflow: hidden; position: relative; cursor: pointer; transition: transform .3s ease; }
+    .video-card:hover { transform: scale(1.02); }
+    .video-card img { width: 100%; aspect-ratio: 16/10; object-fit: cover; }
+    .video-card h3 { margin: .5rem; font-size: .9rem; }
+    .video-card .tags { margin: .5rem; font-size: .75rem; color: #aaa; }
+    .video-card .tags span { background: #333; padding: 2px 6px; margin-right: 5px; border-radius: 4px; }
+
+    .favorite-btn, .edit-btn { position: absolute; top: 8px; font-size: 1.2rem; background: transparent; border: none; cursor: pointer; z-index: 2; }
+    .favorite-btn { right: 8px; color: gold; }
+    .favorite-btn.active { color: orange; }
+    .edit-btn { left: 8px; color: #0bf; display: none; }
+    .video-card.admin .edit-btn { display: block; }
+
+    .pagination { text-align: center; margin-top: 2rem; }
+    .pagination button { padding: .5rem 1rem; background: #333; color: #fff; border: none; margin: 0 5px; border-radius: 4px; cursor: pointer; }
+    .pagination span { margin: 0 10px; font-size: .9rem; color: #ccc; }
+
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: none; justify-content: center; align-items: center; z-index: 1000;}
+    .modal iframe { width: 90%; height: 90vh; max-width: 960px; }
+
+
+    /* ログインダイアログ */
+    #passwordOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 10000; }
+    #passwordOverlay input { padding: .6rem .8rem; font-size: 1rem; border: none; border-radius: 4px; margin-bottom: .7rem; width: 220px; text-align: center; }
+    #passwordOverlay button { padding: .6rem 1.2rem; font-size: 1rem; border: none; border-radius: 4px; background: #0bf; color: #fff; cursor: pointer; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      header { padding: .5rem; }
+      .header-top h1 { font-size: 1.2rem; }
+      .header-bottom { flex-direction: column; align-items: flex-start; gap: .5rem; position: relative; }
+      .header-bottom nav { position: static; transform: none; margin-bottom: .5rem; }
+      .main-content { flex-direction: column; }
+      .sidebar { display: block; width: 100%; margin-bottom: 1rem; }
+      .search-bar input { width: 70%; }
+      .video-grid { grid-template-columns: 1fr; }
+      .pagination { margin-top: 1rem; }
+   }
+
+  </style>
+</head>
+<body>
+  <!-- パスワード入力オーバーレイ（初期非表示） -->
+  <div id="passwordOverlay">
+    <h2>管理者ログイン</h2>
+    <input type="password" id="passwordInput" placeholder="パスワードを入力">
+    <button id="loginBtn" type="button">ログイン</button>
+  </div>
+
+ <header>
+    <div class="header-top">
+      <h1> tiktoker master</h1>
+    </div>
+    <div class="header-bottom">
+      <nav>
+        <a href="index.html">ホーム</a>
+        <a href="about.html">about</a>
+        <a href="favorites.html">お気に入り</a>
+      </nav>
+      <div class="login-container">
+	<a href="admin.html">管理</a>
+        <button id="loginToggle" type="button" href="admin.html">管理者ログイン</button>
+        <span id="adminBadge">管理モード</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <aside class="sidebar">
+      <h3>タグで絞り込み</h3>
+      <div id="tagList"></div>
+    </aside>
+
+    <div class="container">
+      <div class="search-bar">
+        <form onsubmit="return false;">
+          <input type="text" id="searchInput" placeholder="動画タイトルまたはタグを検索...">
+          <button type="button">検索</button>
+        </form>
+      </div>
+
+      <div id="selectedTags" class="selected-tags"></div>
+
+      <div class="video-grid" id="videoGrid"></div>
+      <div class="pagination">
+        <button type="button" onclick="prevPage()">前へ</button>
+        <span id="pageInfo"></span>
+        <button id="nextButton" type="button" onclick="nextPage()">次へ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal" onclick="closeModal()">
+    <iframe id="modalVideo" src="" frameborder="0" allowfullscreen></iframe>
+  </div>
+
+<script>
+/***** 認証設定 *****/
+const ADMIN_PASSWORD = 'admin123'; // ← 変更可
+let isAdmin = false;
+function showLoginOverlay() { document.getElementById('passwordOverlay').style.display = 'flex'; }
+function hideLoginOverlay() { document.getElementById('passwordOverlay').style.display = 'none'; }
+function unlockAdmin() {
+  isAdmin = true;
+  hideLoginOverlay();
+  document.getElementById('adminBadge').style.display = 'inline-block';
+  document.getElementById('loginToggle').style.display = 'none';
+  renderVideos();
+  alert('管理モードでログインしました');
+}
+function checkPassword() {
+  const val = document.getElementById('passwordInput').value.trim();
+  if (val === ADMIN_PASSWORD) unlockAdmin();
+  else alert('パスワードが違います');
+}
+
+document.getElementById('loginToggle').onclick = showLoginOverlay;
+document.getElementById('loginBtn').onclick = checkPassword;
+document.getElementById('passwordInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); checkPassword(); }
+});
+
+/***** ギャラリー変数 *****/
+let videoData = [];
+let currentPage = 1;
+const perPage = 6;
+let selectedTags = [];
+
+document.addEventListener('DOMContentLoaded', initGallery);
+function initGallery() {
+  fetch('videos.json')
+    .then(r => r.json())
+    .then(json => {
+      videoData = json.map(v => ({
+       ...v,
+  // JSONに `video` フィールドがあればそれを優先して使い、なければ xvideos 埋め込みURLをデフォルトとする
+        video: v.video
+        ? v.video
+        : `https://www.xvideos.com/embedframe/${v.id}`
+      }));
+      renderTags();
+      renderVideos();
+    })
+    .catch(console.error);
+}
+
+/***** レンダリング関数 *****/
+function renderTags() {
+  const tagList = document.getElementById('tagList');
+  const tags = [...new Set(videoData.flatMap(v => v.tags))].sort();
+  tagList.innerHTML = tags.map(tag =>
+    `<span class="tag ${selectedTags.includes(tag) ? 'active' : ''}" onclick="toggleTag('${tag}')">${tag}</span>`
+  ).join('');
+}
+
+function renderSelectedTags() {
+  const sel = document.getElementById('selectedTags');
+  sel.innerHTML = selectedTags.map(t => `<span onclick="removeTag('${t}')">${t} &times;</span>`).join('');
+  sel.style.display = selectedTags.length ? 'block' : 'none';
+}
+
+function renderVideos() {
+  const grid = document.getElementById('videoGrid');
+  const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+  const filtered = selectedTags.length
+    ? videoData.filter(v => selectedTags.every(t => v.tags.includes(t)))
+    : videoData;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * perPage;
+  const paginated = filtered.slice(start, start + perPage);
+
+  grid.innerHTML = paginated.map(v =>
+    `<div class="video-card ${isAdmin ? 'admin' : ''}">
+      <button type="button" class="edit-btn" onclick="event.stopPropagation();editVideo('${v.id}')">✎</button>
+      <button type="button" class="favorite-btn ${favorites.includes(v.id) ? 'active' : ''}" onclick="event.stopPropagation();toggleFavorite('${v.id}')">${favorites.includes(v.id) ? '★' : '☆'}</button>
+      <div onclick="openModal('${v.video}')">
+        <img src="${v.thumb}" alt="${v.title}">
+        <h3>${v.title}</h3>
+        <div class="tags">${v.tags.map(t => `<span onclick="event.stopPropagation();toggleTag('${t}')">${t}</span>`).join('')}</div>
+      </div>
+    </div>`
+  ).join('');
+
+  document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
+  document.querySelector('.pagination button').disabled = currentPage === 1;
+  document.getElementById('nextButton').disabled = currentPage === totalPages;
+}
+
+/***** UI操作関数 *****/
+function toggleTag(tag) {
+  selectedTags = selectedTags.includes(tag) ? selectedTags.filter(t => t !== tag) : [...selectedTags, tag];
+  currentPage = 1; renderTags(); renderSelectedTags(); renderVideos(); window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function removeTag(tag) { selectedTags = selectedTags.filter(t => t !== tag); currentPage = 1; renderTags(); renderSelectedTags(); renderVideos(); }
+function nextPage() { currentPage++; renderVideos(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+function prevPage() { currentPage--; renderVideos(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+function openModal(url) { document.getElementById('modalVideo').src = url; document.getElementById('modal').style.display = 'flex'; }
+function closeModal() { document.getElementById('modalVideo').src = ''; document.getElementById('modal').style.display = 'none'; }
+function toggleFavorite(id) { let favs = JSON.parse(localStorage.getItem('favorites') || '[]'); favs = favs.includes(id) ? favs.filter(f => f !== id) : [...favs, id]; localStorage.setItem('favorites', JSON.stringify(favs)); renderVideos(); }
+
+/***** 編集機能（簡易） *****/
+function editVideo(id) {
+  if (!isAdmin) return;
+  const idx = videoData.findIndex(v => v.id === id);
+  if (idx === -1) return;
+  const v = videoData[idx];
+  const newTitle = prompt('タイトルを編集', v.title) || v.title;
+  const newTags = prompt('カンマ区切りでタグ編集', v.tags.join(',')) || v.tags.join(',');
+  videoData[idx] = { ...v, title: newTitle, tags: newTags.split(',').map(t => t.trim()).filter(Boolean) };
+  renderTags(); renderSelectedTags(); renderVideos();
+  saveToServer(videoData[idx]);
+}
+
+/***** サーバー連携関数 *****/
+async function saveToServer(videoObj) {
+  try {
+    const res = await fetch('/.netlify/functions/savevideo', {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: ADMIN_PASSWORD, video: videoObj })
+    });
+    if (res.ok) alert('サーバーに保存しました！');
+    else alert('サーバー保存に失敗しました');
+  } catch (err) {
+    alert('通信エラーが発生しました'); console.error(err);
+  }
+}
+</script>
+</body>
+</html>
