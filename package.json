@@ -16,5 +16,8 @@
     "url": "https://github.com/purinzan/tiktoker-master/issues"
   },
   "homepage": "https://github.com/purinzan/tiktoker-master#readme",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
 }
