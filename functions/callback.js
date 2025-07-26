@@ -1,3 +1,20 @@
+// callback.js
+
+// デバッグ用：起動時に環境変数の中身をログに出す
+console.log("▶ CLIENT_KEY:", process.env.CLIENT_KEY);
+
+exports.handler = async (event) => {
+  if (!process.env.CLIENT_KEY) {
+    console.error("ERROR: CLIENT_KEY が設定されていません！"); 
+    return {
+      statusCode: 500,
+      body: "Server Error: Missing CLIENT_KEY",
+    };
+  }
+
+  // 以降は process.env.CLIENT_KEY を使ってリクエストを組み立てる…
+};
+
 const fetch = require("node-fetch");
 
 exports.handler = async (event, context) => {
