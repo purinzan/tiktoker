@@ -59,3 +59,17 @@ exports.handler = async (event, context) => {
     return { statusCode: 500, body: JSON.stringify({ error: e.message }) };
   }
 };
+// 例: callback.js の最後に追加
+if (require.main === module) {
+  const code = process.argv[2];
+  if (!code) {
+    console.error("Usage: node callback.js <code>");
+    process.exit(1);
+  }
+  exchangeCodeForTokens(code)
+    .then(token => console.log(JSON.stringify(token)))
+    .catch(err => {
+      console.error(err);
+      process.exit(1);
+    });
+}
